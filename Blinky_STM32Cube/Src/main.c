@@ -81,13 +81,11 @@ int main(void)
 
   /* Add your application code here
      */
-
+  adc_sample();
   /* Infinite loop */
   while (1)
   {
-	  xy_val_t data;
 	  check_blink();
-	  adc_sample(&data);
   }
 }
 

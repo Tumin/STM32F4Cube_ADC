@@ -21,15 +21,17 @@
 #define ADCy_CHANNEL				(ADC_CHANNEL_11)
 
 #define ADCx_CLK_ENABLE()			__HAL_RCC_ADC1_CLK_ENABLE()
-#define ADCx_PIN_CLK_ENABLE()		__HAL_RCC_GPIOC_CLK_ENABLE();
+#define ADCx_PIN_CLK_ENABLE()		__HAL_RCC_GPIOC_CLK_ENABLE()
+#define DMAx_CLK_ENABLE()           __HAL_RCC_DMA2_CLK_ENABLE()
+
+/* Definition for ADCx's DMA */
+#define ADCx_DMA_CHANNEL                DMA_CHANNEL_0
+#define ADCx_DMA_STREAM                 DMA2_Stream0
+
+/* Definition for ADCx's NVIC */
+//#define ADCx_DMA_IRQn                   DMA2_Stream0_IRQn
+//#define ADCx_DMA_IRQHandler             DMA2_Stream0_IRQHandler
 
 void adc_init(void);
-
-typedef struct {
-	uint32_t x;
-	uint32_t y;
-} xy_val_t;
-
-void adc_sample(xy_val_t * val);
 
 #endif /* ADC_H_ */
