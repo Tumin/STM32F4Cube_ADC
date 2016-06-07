@@ -160,7 +160,7 @@ void SysTick_Handler(void)
 }
 
 extern ADC_HandleTypeDef g_AdcHandle;
-void DMA2_Stream0_IRQHandler(void)
+void ADCx_DMA_IRQHandler(void)
 {
 	HAL_DMA_IRQHandler(g_AdcHandle.DMA_Handle);
 }

@@ -16,17 +16,41 @@ void ErrorHandler(void) {
 	}
 }
 
+/*
+ *  Explanation of below functionality
+ *  The ADC can sample multiple channels in a single capture in scan mode
+ *  We don't really want or need continuous capture because we're making
+ *  a HID interface, and we certainly don't need very high accuracy
+ *
+ *  The ADC supports multiple channels. In the HAL driver, the order of the
+ *  reads of each channel is done by "rank". Each channel is mapped to a GPIO pin
+ *  with options being listed in Table 10 in the datasheet (not the programmer's guide)
+ *
+ * 	Since the ADC is so damn fast and isn't really generating all that much data,
+ * 	the easiest way to handle it is to set up a DMA stream that will be called
+ * 	each time the ADC capture event occurs. The ADC supports either software capture,
+ *  which we could support with a simple timer interrupt and triggering it directly, but
+ *  it also supports timer output-compare captures. The timer functionality used
+ *  is that the timer will count up and check whether the current counter value matches
+ *  the "capture" value, at which point it will pulse an output that causes the ADC to trigger
+ *
+ *  So we have the ADC capturing 2 channels, the data is handled by the DMA, and the timing
+ *  granularity is handled by timer2's output compare channel. If the timers were
+ *  more heavily in use I would have to play some tricks but...this application is
+ *  simple
+ */
 void HAL_ADC_MspInit(ADC_HandleTypeDef * hadc) {
 
 	ADCx_CLK_ENABLE();
 	ADCx_PIN_CLK_ENABLE();
 	DMAx_CLK_ENABLE();
-	__TIM2_CLK_ENABLE();
+	TIMx_CLK_ENABLE();
 
 	// Timer1 runs on APB1
 	// SystemClock = 180MHz, APB2 is SYSCLK/4 so 45MHz, max clock for timer block
 	// TIMCLK = APB2 x 2, runs at 90MHz
-	htim_adc.Instance = TIM2;
+	// I believe this gives me a 1s period so adjust this later
+	htim_adc.Instance = TIMx;
 	htim_adc.Init.ClockDivision = 0;
 	htim_adc.Init.Period = 10000 - 1;
 	htim_adc.Init.Prescaler = 9000;
@@ -35,14 +59,18 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef * hadc) {
 		ErrorHandler();
 	}
 
+	// Configure the timer channel settings
 	TIM_OC_InitTypeDef tim_oc;
 	tim_oc.OCMode = TIM_OCMODE_ACTIVE;
 	tim_oc.OCPolarity = TIM_OCPOLARITY_HIGH;
+
+	// Capture triggered when counter is 0
 	tim_oc.Pulse = 0;
 
-	HAL_TIM_OC_ConfigChannel(&htim_adc,&tim_oc,TIM_CHANNEL_2);
-	HAL_TIM_OC_Start(&htim_adc,TIM_CHANNEL_2);
+	HAL_TIM_OC_ConfigChannel(&htim_adc,&tim_oc,TIMx_CHANNEL);
+	HAL_TIM_OC_Start(&htim_adc,TIMx_CHANNEL);
 
+	// COnfigure pins for ADC
 	GPIO_InitTypeDef gpioInit;
 	gpioInit.Pin = ADCx_CHANNEL_PIN_NUMBER | ADCy_CHANNEL_PIN_NUMBER;
 	gpioInit.Mode = GPIO_MODE_ANALOG;
@@ -53,6 +81,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef * hadc) {
 	/* Set the parameters to be configured */
 	hdma_adc.Instance = ADCx_DMA_STREAM;
 
+	// Set up the DMA channel settings
 	hdma_adc.Init.Channel  = ADCx_DMA_CHANNEL;
 	hdma_adc.Init.Direction = DMA_PERIPH_TO_MEMORY;
 	hdma_adc.Init.PeriphInc = DMA_PINC_DISABLE;
@@ -73,8 +102,8 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef * hadc) {
 
 	/*##-4- Configure the NVIC for DMA #########################################*/
 	/* NVIC configuration for DMA transfer complete interrupt */
-	HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+	HAL_NVIC_SetPriority(ADCx_DMA_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(ADCx_DMA_IRQn);
 }
 
 void adc_init(void) {
@@ -115,9 +144,11 @@ void adc_init(void) {
 		ErrorHandler();
 	}
 
-}
+	// This sets up the stream, which is called every time the ADC samples
+	// Samples are driven by the timer
 
-void adc_sample(void) {
+	// There is a possibility that there is some issue with starting the timer
+	// first but it's probably fine
 	if(HAL_OK != HAL_ADC_Start_DMA(&g_AdcHandle,samples,2)) {
 		ErrorHandler();
 	}

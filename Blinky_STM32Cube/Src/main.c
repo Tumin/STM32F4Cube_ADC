@@ -37,6 +37,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "stm32f429i_discovery_lcd.h"
 
 /** @addtogroup STM32F4xx_HAL_Examples
   * @{
@@ -80,12 +82,40 @@ int main(void)
   SystemClock_Config();
 
   /* Add your application code here
-     */
-  adc_sample();
+ /*##-1- LCD Initialization #################################################*/
+  /* Initialize the LCD */
+  BSP_LCD_Init();
+
+  /* Layer1 Init */
+  BSP_LCD_LayerDefaultInit(0, LCD_FRAME_BUFFER);
+
+  /* Set Foreground Layer */
+  BSP_LCD_SelectLayer(0);
+
+  /* Enable The LCD */
+  BSP_LCD_DisplayOn();
+
   /* Infinite loop */
+  uint32_t tick = HAL_GetTick();
   while (1)
   {
-	  check_blink();
+	  static uint32_t val = 0;
+	  check_blink(); // Here to make sure CPU isn't stuck somewhere
+	  uint32_t new_tick = HAL_GetTick();
+	  if(new_tick - tick > 1000)
+	  {
+		  tick = new_tick;
+		  /* Clear the LCD */
+		  BSP_LCD_Clear(LCD_COLOR_RED);
+		  BSP_LCD_FillRect(val,50,50,50);
+		  val += 20;
+	  }
+	  /*
+	   * Add support for LCD screen drawing
+	   *
+	   * Want a solid background with an object on it
+	   * controlled by the x/y samples coming from my joystick
+	   */
   }
 }
 
