@@ -16,7 +16,7 @@ void adc_init(void) {
 	ADCx_PIN_CLK_ENABLE();
 	DMAx_CLK_ENABLE();
 
-	gpioInit.Pin = ADCx_CHANNEL_PIN_NUMBER;
+	gpioInit.Pin = ADCx_CHANNEL_PIN_NUMBER | ADCy_CHANNEL_PIN_NUMBER;
 	gpioInit.Mode = GPIO_MODE_ANALOG;
 	gpioInit.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(ADCx_CHANNEL_PORT, &gpioInit);
@@ -25,14 +25,14 @@ void adc_init(void) {
 	// Need the ADCCLK to be <36MHz
 	g_AdcHandle.Init.ClockPrescaler = ADC_CLOCKPRESCALER_PCLK_DIV4;
 	g_AdcHandle.Init.Resolution = ADC_RESOLUTION_12B;
-	g_AdcHandle.Init.ScanConvMode = DISABLE;
-	g_AdcHandle.Init.ContinuousConvMode = ENABLE;
+	g_AdcHandle.Init.ScanConvMode = ENABLE;
+	g_AdcHandle.Init.ContinuousConvMode = DISABLE;
 	g_AdcHandle.Init.DiscontinuousConvMode = DISABLE;
 	g_AdcHandle.Init.NbrOfDiscConversion = 0;
 	g_AdcHandle.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE; // Ignored since using software start
 	g_AdcHandle.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	g_AdcHandle.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	g_AdcHandle.Init.NbrOfConversion = 1;
+	g_AdcHandle.Init.NbrOfConversion = 2;
 	g_AdcHandle.Init.DMAContinuousRequests = ENABLE;
 	g_AdcHandle.Init.EOCSelection = DISABLE;
 
@@ -75,13 +75,17 @@ void adc_init(void) {
 		while(1);
 	}
 
+	adcChannel.Channel = ADCy_CHANNEL;
+	adcChannel.Rank = 2;
+	if (HAL_ADC_ConfigChannel(&g_AdcHandle, &adcChannel) != HAL_OK)
+	{
+		while(1);
+	}
 
 }
 
-// Trying to ill-advisedly implement a 2 channel scan
-// on 1 ADC
 void adc_sample(void) {
-	if(HAL_OK != HAL_ADC_Start_DMA(&g_AdcHandle,samples,1)) {
+	if(HAL_OK != HAL_ADC_Start_DMA(&g_AdcHandle,samples,2)) {
 		while(1) {
 		}
 	}
